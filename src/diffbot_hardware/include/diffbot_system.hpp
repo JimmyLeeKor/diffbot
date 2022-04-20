@@ -57,34 +57,23 @@ class HardwareCommandPub : public rclcpp::Node  //the node definition for the pu
 
 
 // define subscriber class
-/*
-class HardwareCommandSub : public rclcpp::Node  //the node definition for the publisher to talk to micro-ROS agent
+
+//class HardwareCommandSub : public rclcpp::Node  //the node definition for the publisher to talk to micro-ROS agent
+class HardwareEncoder
 {
   public:
-    HardwareCommandSub();
+    HardwareEncoder();
     
-    void EncoderLeftSubscription(std_msgs::msg::Int32 encoder_left);    
+    void SetEncoderLeft(std_msgs::msg::Int32 encoder_left);
+    std_msgs::msg::Int32 GetEncoderLeft(void);
 
 
   private:
+    std_msgs::msg::Int32 enc_left_raw;
 
-    void encoder_left_callback(const std_msgs::msg::Int32);
 
-
-    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_left_subscriber_;
 
 };
-*/
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -124,6 +113,10 @@ public:
   std::shared_ptr<HardwareCommandPub> hw_cmd_motor_right_rpm_pub_;    //make the publisher node a member
 
   //std::shared_ptr<HardwareCommandSub> hw_state_encoder_left_sub_;    //make the subscription node a member
+  //void setencoderleft(std_msgs::msg::Int32);
+
+  std::shared_ptr<HardwareEncoder> hw_encoder_left_;    //make the encoder parameter get
+
 
 
 private:
@@ -139,6 +132,14 @@ private:
   // Store the wheeled robot position
   double base_x_, base_y_, base_theta_;
 
+  //odometry calulate variable
+  int32_t CurrentEncoderPulseLeft, CurrentEncoderPulseRight;
+  int32_t LastEncoderPulseLeft, LastEncoderPulseRight;  
+  int32_t DiffEncoderPulseLeft, DiffEncoderPulseRight;  
+  double DistanceTravelledLeftWheel, DistanceTravelledRightWheel;
+
+
+
   std_msgs::msg::Int32 motor_left_rpm_ ;
   std_msgs::msg::Int32 motor_right_rpm_ ;
 
@@ -150,3 +151,4 @@ private:
 }  // namespace diffbot_hardware
 
 #endif  // DIFFBOT_HARDWARE__DIFFBOT_SYSTEM_HPP_
+  //get encoder current value

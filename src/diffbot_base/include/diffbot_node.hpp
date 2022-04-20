@@ -1,6 +1,6 @@
 
-#ifndef __DIFFBOT_BASE_HPP__
-#define __DIFFBOT_BASE_HPP__
+#ifndef __DIFFBOT_NODE_HPP__
+#define __DIFFBOT_NODE_HPP__
 
 
 #include <chrono>
@@ -16,7 +16,6 @@
 
 namespace diffbot_base
 {
-
   class diffbot_node
    : public rclcpp::Node
   {
@@ -28,33 +27,34 @@ namespace diffbot_base
       //void set_motor_left_rpm(int32_t rpm);
       //rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_left_rpm_publisher_;
 
-      void set_motor_left_rpm(int32_t lw_rpm_);
-      void set_motor_right_rpm(int32_t rw_rpm_);
+      //void set_motor_left_rpm(int32_t lw_rpm_);
+      //void set_motor_right_rpm(int32_t rw_rpm_);
 
+
+      //rclcpp::TimerBase::SharedPtr timer_;
+      //void timer_callback();
+
+      //rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_left_rpm_publisher_;
+      //rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_right_rpm_publisher_;      
+      
+
+      void encoder_left_rx_callback();
+      rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_left_subscriber_;
 
     private:
 
-      rclcpp::TimerBase::SharedPtr timer_;
-      void timer_callback();
-      rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_left_rpm_publisher_;
-      rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_right_rpm_publisher_;      
-      
       size_t count_;
-
       int32_t lw_rpm_;
       int32_t rw_rpm_;
-
-
-
-
       //void motor_left_rpm_publisher();
-
-      
-      //int32_t motor_left_rpm_;
-      //int32_t motor_right_rpm;
-
-
+    
+      //std_msgs::msg::Int32 encoder_left_raw;
+      int32_t encoder_left_raw_;
   };
+
+
+
+
 } //namespace
 
 

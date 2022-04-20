@@ -63,7 +63,7 @@ def generate_launch_description():
     )
 
     diffbot_node = Node(
-        package="diffbot_node",
+        package="diffbot_base",
         executable="diffbot_node",
     )    
     
@@ -126,7 +126,7 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         delay_rviz_after_joint_state_broadcaster_spawner,
         delay_robot_controller_spawner_after_joint_state_broadcaster_spawner,
-        #diffbot_node,
+        diffbot_node,
     ]
 
     return LaunchDescription(nodes)

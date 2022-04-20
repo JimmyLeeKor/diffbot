@@ -24,6 +24,8 @@
 #include "std_msgs/msg/int32.hpp"
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
+
+
 #include "diffbot_system.hpp"
 //#include "diffbot_node.hpp"
 
@@ -33,6 +35,25 @@
 
 namespace diffbot_hardware
 {
+
+
+
+
+void HardwareEncoder::SetEncoderLeft(std_msgs::msg::Int32 encv)
+{
+  enc_left_raw = encv;
+}
+
+std_msgs::msg::Int32 HardwareEncoder::GetEncoderLeft()
+{
+  return enc_left_raw;
+}
+
+
+
+
+
+
 
 
 
@@ -95,7 +116,6 @@ CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::Hardware
   hw_cmd_motor_left_rpm_pub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
   hw_cmd_motor_right_rpm_pub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
 
-  //hw_state_encoder_left_sub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
 
 
 
@@ -161,6 +181,8 @@ CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::Hardware
       return CallbackReturn::ERROR;
     }
   }
+
+
 
 
 
@@ -251,6 +273,42 @@ CallbackReturn DiffBotSystemHardware::on_deactivate(
   return CallbackReturn::SUCCESS;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+//0.628318400 
+
+
+#define DIFFBOT_WHEEL_RADIUS 0.285
+#define ENCODER_MAX  112572
+
+//( PI * 휠지름[0.2m])/(1회전엔코더[112572] * 기어비[1]) 
+#define METER_PER_ENCODERTICK 0.00000558148029705433f //meter
+
+
+// RPM = M/S / ( PI * 2 * WHEEL_RADIUS)
+#define VELOCITY_CONVERT_CONSTANT 1.591549762
+
+
+
+
+
+
+
+
+
+
+
+
+
 hardware_interface::return_type DiffBotSystemHardware::read()
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Reading...");
@@ -276,12 +334,53 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 
   // Update the free-flyer, i.e. the base notation using the classical
   // wheel differentiable kinematics
+  /*
   double base_dx = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * cos(base_theta_);
   double base_dy = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * sin(base_theta_);
   double base_dtheta = radius * (hw_commands_[0] - hw_commands_[1]) / dist_w;
   base_x_ += base_dx * dt;
   base_y_ += base_dy * dt;
   base_theta_ += base_dtheta * dt;
+*/
+
+
+//odom calculate from diffbot encoder pulse
+//wheel differentiable kinematics
+
+  //get encoder current value
+  //CurrentEncoderPulseLeft = GetEncoderLeft();
+  //CurrentEncoderPulseRight = GetEncoderRight();  
+
+  //cal diff encoder value
+  //DiffEncoderPulseLeft = CalDiffEncoderLeft();
+  //DiffEncoderPulseRight = CalDiffEncoderRight();
+
+  //update last encoder value
+  LastEncoderPulseLeft = CurrentEncoderPulseLeft;
+  LastEncoderPulseRight = CurrentEncoderPulseRight;
+
+  //calculate left and right wheel travel distance
+  DistanceTravelledLeftWheel = DiffEncoderPulseLeft*METER_PER_ENCODERTICK;
+  DistanceTravelledRightWheel = DiffEncoderPulseLeft*METER_PER_ENCODERTICK;
+
+
+
+  //double base_dx = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * cos(base_theta_);
+  double base_dx = 0.5 * radius * (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * cos(base_theta_);
+  //double base_dy = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * sin(base_theta_);  
+  double base_dy = 0.5 * radius * (DistanceTravelledLeftWheel - DistanceTravelledRightWheel) * cos(base_theta_);
+  //double base_dtheta = radius * (hw_commands_[0] - hw_commands_[1]) / dist_w;
+  double base_dtheta = radius * (DistanceTravelledLeftWheel - DistanceTravelledRightWheel) / dist_w;
+
+  //update diffbot x,y,theta
+  base_x_ += base_dx * dt;
+  base_y_ += base_dy * dt;
+  base_theta_ += base_dtheta * dt;
+
+
+
+
+
 
   // START: This part here is for exemplary purposes - Please do not copy to your production code
   RCLCPP_INFO(
@@ -290,26 +389,17 @@ hardware_interface::return_type DiffBotSystemHardware::read()
   // END: This part here is for exemplary purposes - Please do not copy to your production code
 
 
-
-
-
-  //hw_state_encoder_left_sub_->HardwareCommandSub();  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // START: This part here is for exemplary purposes - Please do not copy to your production code
+  RCLCPP_INFO(
+    rclcpp::get_logger("MircrRosNode"), "Encoder Tick is read! (%d)", encoder_left_.data    );
+  RCLCPP_INFO(
+    rclcpp::get_logger("MircrRosNode"), "Encoder Tick is read! (%d)", encoder_left_.data    );
+  RCLCPP_INFO(
+    rclcpp::get_logger("MircrRosNode"), "Encoder Tick is read! (%d)", encoder_left_.data    );
+  RCLCPP_INFO(
+    rclcpp::get_logger("MircrRosNode"), "Encoder Tick is read! (%d)", encoder_left_.data    );
+  RCLCPP_INFO(
+    rclcpp::get_logger("MircrRosNode"), "Encoder Tick is read! (%d)", encoder_left_.data    );
 
 
 
@@ -342,7 +432,7 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
 
   // sending commands to the hardware
   //publish to topic
-  motor_left_rpm_.data = (int32_t)(hw_commands_[0] * 100.0f);
+  motor_left_rpm_.data = (int32_t)(hw_commands_[0] * VELOCITY_CONVERT_CONSTANT);
   hw_cmd_motor_left_rpm_pub_->MotorLeftRpmPublish(motor_left_rpm_);  
 
   RCLCPP_INFO(
@@ -351,7 +441,7 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
 
 
   //publish to topic
-  motor_right_rpm_.data = (int32_t)(hw_commands_[1] * 100.0f);
+  motor_right_rpm_.data = (int32_t)(hw_commands_[1] * VELOCITY_CONVERT_CONSTANT);
   hw_cmd_motor_right_rpm_pub_->MotorRightRpmPublish(motor_right_rpm_);  
 
   RCLCPP_INFO(
@@ -384,57 +474,6 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
 
   return hardware_interface::return_type::OK;
 }
-
-
-
-
-
-
-
-//int main(int argc, char * argv[])
-int main()
-{
-  //rclcpp::init(argc, argv);
-  //rclcpp::spin(std::make_shared<int32_subscriber_node>());
-  //rclcpp::shutdown();
-
-    RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-    RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-        RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-        RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-        RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-        RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");
-
-        RCLCPP_INFO(
-    rclcpp::get_logger("MiroRosNode"), "sub main loop     %d for '%s'!", 555,
-    "main node");    
-    
-
-  return 0;
-}
-
-
-
-
-
-
 
 
 
