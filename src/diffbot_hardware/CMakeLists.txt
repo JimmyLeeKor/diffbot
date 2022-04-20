@@ -17,6 +17,8 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(diffbot_base REQUIRED)
+
 
 
 ## COMPILE
@@ -42,6 +44,7 @@ ament_target_dependencies(
   pluginlib  
   hardware_interface
   rclcpp_lifecycle
+  diffbot_base
 )
 
 # Causes the visibility macros to use dllexport rather than dllimport,

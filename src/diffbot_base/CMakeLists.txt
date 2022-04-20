@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(diffbot_base)
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
-
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -13,54 +9,26 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(diffbot_hardware REQUIRED)
+find_package(diffbot_base REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
-
+#header include
 include_directories(
   include
+  srv
 )
 
-add_library(test1 
- src/diffbot_node.cpp)
-target_link_libraries(test1)
 
-
-# add excutable
-set(EXECUTABLE_NAME "diffbot_node")
-add_executable(${EXECUTABLE_NAME} src/diffbot_node.cpp)
-
-target_link_libraries(${EXECUTABLE_NAME} test1)
-ament_target_dependencies(diffbot_node 
-  rclcpp std_msgs)
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/Encoderservice.srv"
+)
 
 
 
-# install(TARGETS 
-#   diffbot_node
-#   DESTINATION lib/${PROJECT_NAME})
+add_executable(diffbot_node src/diffbot_node.cpp)
+ament_target_dependencies(diffbot_node rclcpp std_msgs diffbot_base)
 
 
-
-# install(TARGETS diffbot_base
-#   DESTINATION lib/${PROJECT_NAME}
-# )
-
-
-## INSTALL
-# install(
-#   TARGETS ${PROJECT_NAME}
-#   DESTINATION lib
-# )
-
-# install(
-#   DIRECTORY include/
-#   DESTINATION include
-# )
-
-
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -73,20 +41,8 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(DIRECTORY src launch
-  DESTINATION share/${PROJECT_NAME}
-)
+install(TARGETS
+  diffbot_node
+  DESTINATION lib/${PROJECT_NAME})
 
-install(TARGETS ${EXECUTABLE_NAME}
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(
-  DIRECTORY include/
-  DESTINATION include
-)
-
-ament_export_include_directories(include)
-ament_export_libraries(test1)
-ament_export_dependencies(rclcpp)
 ament_package()

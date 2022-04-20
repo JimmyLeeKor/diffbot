@@ -37,8 +37,8 @@ diffbot_teleop::diffbot_teleop(std::shared_ptr<rclcpp::Node> nh):
   nh_(nh),
   linear_(0),
   angular_(0),
-  l_scale_(1.0),
-  a_scale_(1.0)
+  l_scale_(0.01),
+  a_scale_(0.01)
 {
 //   nh_.param("scale_angular", a_scale_, a_scale_);
 //   nh_.param("scale_linear", l_scale_, l_scale_);
@@ -109,13 +109,13 @@ void diffbot_teleop::keyLoop()
     {
       case KEYCODE_L:
         std::cout << "LEFT" << std::endl;
-        angular_ = 3.0;
+        angular_ = 1.0;
         dirty = true;
         break;
       case KEYCODE_R:
         // ROS_DEBUG("RIGHT");
         std::cout << "RIGHT" << std::endl;
-        angular_ = -3.0;
+        angular_ = -1.0;
         dirty = true;
         break;
       case KEYCODE_U:
