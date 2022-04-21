@@ -26,7 +26,7 @@
 
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
-#include "diffbot_base/srv/encoderservice.hpp"
+#include "diffbot_msg/srv/encoderservice.hpp"
 
 
 
@@ -50,10 +50,10 @@ namespace diffbot_hardware
  void get_values_client(int32_t& encoder_left_val, int32_t& encoder_right_val)
  {
     std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("lgv_encoders_hw_interface");
-    rclcpp::Client<diffbot_base::srv::Encoderservice>::SharedPtr client =
-    node->create_client<diffbot_base::srv::Encoderservice>("encoder_val");
+    rclcpp::Client<diffbot_msg::srv::Encoderservice>::SharedPtr client =
+    node->create_client<diffbot_msg::srv::Encoderservice>("encoder_val");
 
-   auto request = std::make_shared<diffbot_base::srv::Encoderservice::Request>();
+   auto request = std::make_shared<diffbot_msg::srv::Encoderservice::Request>();
     request->state =true;
 
     while (!client->wait_for_service(1s)) 
@@ -70,8 +70,14 @@ namespace diffbot_hardware
    if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS)
     {
       //RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "left: %0.5f,right: %0.5f ", result.get()->to_encoder_left,result.get()->to_encoder_right);
-      encoder_left_val= (int32_t)result.get()->to_encoder_left;
-      encoder_right_val=(int32_t)result.get()->to_encoder_right;
+      encoder_left_val = result.get()->to_encoder_left;
+      encoder_right_val = result.get()->to_encoder_right;
+      rclcpp::Time get_time_temp1 = result.get()->to_encoder_left_stamp;
+      rclcpp::Time get_time_temp2 = result.get()->to_encoder_right_stamp;
+
+     RCLCPP_INFO(rclcpp::get_logger("Debug_from_hardware_node"), "left time stamp: %5ld. val: %d, right time stamp: %5ld, val: %d ", 
+                  get_time_temp1.nanoseconds(), result.get()->to_encoder_left, get_time_temp2.nanoseconds(), result.get()->to_encoder_right);
+
     } 
     else 
     {
