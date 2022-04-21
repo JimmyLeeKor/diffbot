@@ -15,6 +15,9 @@
 #define KEYCODE_Q 0x71
 
 
+#define LINEAR_VELOCITY_CMD_VAL 0.01
+#define ANGULAR_VELOCITY_CMD_VAL 0.01
+
 
 
 
@@ -37,8 +40,8 @@ diffbot_teleop::diffbot_teleop(std::shared_ptr<rclcpp::Node> nh):
   nh_(nh),
   linear_(0),
   angular_(0),
-  l_scale_(0.01),
-  a_scale_(0.01)
+  l_scale_(1),
+  a_scale_(1)
 {
 //   nh_.param("scale_angular", a_scale_, a_scale_);
 //   nh_.param("scale_linear", l_scale_, l_scale_);
@@ -109,25 +112,25 @@ void diffbot_teleop::keyLoop()
     {
       case KEYCODE_L:
         std::cout << "LEFT" << std::endl;
-        angular_ = 1.0;
+        angular_ = ANGULAR_VELOCITY_CMD_VAL;
         dirty = true;
         break;
       case KEYCODE_R:
         // ROS_DEBUG("RIGHT");
         std::cout << "RIGHT" << std::endl;
-        angular_ = -1.0;
+        angular_ = -ANGULAR_VELOCITY_CMD_VAL;
         dirty = true;
         break;
       case KEYCODE_U:
         // ROS_DEBUG("UP");
         std::cout << "UP" << std::endl;
-        linear_ = 1.0;
+        linear_ = LINEAR_VELOCITY_CMD_VAL;
         dirty = true;
         break;
       case KEYCODE_D:
         // ROS_DEBUG("DOWN");
         std::cout << "DOWN" << std::endl;
-        linear_ = -1.0;
+        linear_ = -LINEAR_VELOCITY_CMD_VAL;
         dirty = true;
         break;
     }

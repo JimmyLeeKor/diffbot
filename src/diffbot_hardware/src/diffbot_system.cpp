@@ -44,10 +44,12 @@ using namespace std::chrono_literals;
 namespace diffbot_hardware
 {
 
-  int32_t temp1;
-  int32_t temp2;
 
- void get_values_client(int32_t& encoder_left_val, int32_t& encoder_right_val)
+void get_values_client(
+  int32_t& encoder_left_val,
+  int32_t& encoder_right_val,
+  rclcpp::Time& encoder_left_timestamp,
+  rclcpp::Time& encoder_right_timestamp )
  {
     std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("lgv_encoders_hw_interface");
     rclcpp::Client<diffbot_msg::srv::Encoderservice>::SharedPtr client =
@@ -72,11 +74,15 @@ namespace diffbot_hardware
       //RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "left: %0.5f,right: %0.5f ", result.get()->to_encoder_left,result.get()->to_encoder_right);
       encoder_left_val = result.get()->to_encoder_left;
       encoder_right_val = result.get()->to_encoder_right;
-      rclcpp::Time get_time_temp1 = result.get()->to_encoder_left_stamp;
-      rclcpp::Time get_time_temp2 = result.get()->to_encoder_right_stamp;
 
-     RCLCPP_INFO(rclcpp::get_logger("Debug_from_hardware_node"), "left time stamp: %5ld. val: %d, right time stamp: %5ld, val: %d ", 
-                  get_time_temp1.nanoseconds(), result.get()->to_encoder_left, get_time_temp2.nanoseconds(), result.get()->to_encoder_right);
+      //rclcpp::Time get_time_temp1 = result.get()->to_encoder_left_stamp;
+      //rclcpp::Time get_time_temp2 = result.get()->to_encoder_right_stamp;
+      encoder_left_timestamp = result.get()->to_encoder_left_stamp;
+      encoder_right_timestamp = result.get()->to_encoder_right_stamp;
+
+
+     //RCLCPP_INFO(rclcpp::get_logger("Debug_from_hardware_node"), "lft time stamp: %5ld. val: %d, right time stamp: %5ld, val: %d ", 
+     //             get_time_temp1.nanoseconds(), result.get()->to_encoder_left, get_time_temp2.nanoseconds(), result.get()->to_encoder_right);
 
     } 
     else 
@@ -84,8 +90,6 @@ namespace diffbot_hardware
       RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service encoder");
     }
   }
-
-
 
 
 
@@ -338,9 +342,11 @@ CallbackReturn DiffBotSystemHardware::on_deactivate(
 #define METER_PER_ENCODERTICK 0.00000558148029705433f //meter
 
 
-// RPM = M/S / ( PI * 2 * WHEEL_RADIUS)
-//#define VELOCITY_CONVERT_CONSTANT 1.591549762
-#define VELOCITY_CONVERT_CONSTANT 100.0
+// RPM = (given M/S / ( PI * 2 ) ) * 60
+//#define VELOCITY_CONVERT_CONSTANT 0.318309952
+#define VELOCITY_CONVERT_CONSTANT 19.09859714
+
+
 
 
 
@@ -359,21 +365,35 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Reading...");
 
-  double radius = 0.02;  // radius of the wheels
-  double dist_w = 0.1;   // distance between the wheels
-  double dt = 0.1;      // Control period
+  double radius = 0.1;  // radius of the wheels
+  double dist_w = 0.57;   // distance between the wheels
 
+  double ldt = 0.0;      // Control period
+  double rdt = 0.0;      // Control period
 
-
-//odom calculate from diffbot encoder pulse
-//wheel differentiable kinematics
-
+  //odom calculate from diffbot encoder pulse
+  //wheel differentiable kinematics
 
   //get encoder current value
-  get_values_client(CurrentEncoderPulseLeft, CurrentEncoderPulseRight);
+  get_values_client(CurrentEncoderPulseLeft, CurrentEncoderPulseRight, CurrentEncoderPulseLeftTimestamp, CurrentEncoderPulseRightTimestamp);
+
+
+
   RCLCPP_INFO( rclcpp::get_logger("diffbot_odom"), "Got value from thread: %.5f, %.5f .",hw_positions_[0],hw_positions_[1]);  
   RCLCPP_INFO( rclcpp::get_logger("diffbot_odom"), "Got value from diffbot_node: %d, %d .",CurrentEncoderPulseLeft, CurrentEncoderPulseRight);
 
+
+  //cal duration
+  ldt   =    CurrentEncoderPulseLeftTimestamp.seconds() - LastEncoderPulseLeftTimestamp.seconds() ;
+  rdt   =    CurrentEncoderPulseRightTimestamp.seconds() - LastEncoderPulseRightTimestamp.seconds() ;  
+
+
+
+
+  RCLCPP_INFO( rclcpp::get_logger("diffbot_odom"), "Duration: %.5f, %.5f .",ldt, rdt);    
+
+
+ 
   //cal diff encoder value
   DiffEncoderPulseLeft = CurrentEncoderPulseLeft - LastEncoderPulseLeft;
   if( DiffEncoderPulseLeft < 0           ) DiffEncoderPulseLeft = DiffEncoderPulseLeft + ENCODER_MAX;
@@ -392,6 +412,12 @@ hardware_interface::return_type DiffBotSystemHardware::read()
   LastEncoderPulseLeft = CurrentEncoderPulseLeft;
   LastEncoderPulseRight = CurrentEncoderPulseRight;
 
+  //time value bacup
+  LastEncoderPulseLeftTimestamp = CurrentEncoderPulseLeftTimestamp;
+  LastEncoderPulseRightTimestamp = CurrentEncoderPulseRightTimestamp;
+
+  
+
   //calculate left and right wheel travel distance
   DistanceTravelledLeftWheel = DiffEncoderPulseLeft*METER_PER_ENCODERTICK;
   DistanceTravelledRightWheel = DiffEncoderPulseLeft*METER_PER_ENCODERTICK;
@@ -400,10 +426,13 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 
   //double base_dx = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * cos(base_theta_);
   double base_dx = 0.5 * radius * (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * cos(base_theta_);
+
   //double base_dy = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * sin(base_theta_);  
   double base_dy = 0.5 * radius * (DistanceTravelledLeftWheel - DistanceTravelledRightWheel) * cos(base_theta_);
+
   //double base_dtheta = radius * (hw_commands_[0] - hw_commands_[1]) / dist_w;
   double base_dtheta = radius * (DistanceTravelledLeftWheel - DistanceTravelledRightWheel) / dist_w;
+
 
   //normalize angle
   base_dtheta = fmod(base_dtheta, 2.0*M_PI);
@@ -415,8 +444,8 @@ hardware_interface::return_type DiffBotSystemHardware::read()
   hw_positions_[1] = hw_positions_[1] + DistanceTravelledRightWheel;
 
   //update joint state - vel
-  hw_velocities_[0] = DistanceTravelledLeftWheel/dt;
-  hw_velocities_[1] = DistanceTravelledRightWheel/dt;  
+  hw_velocities_[0] = DistanceTravelledLeftWheel/ldt;
+  hw_velocities_[1] = DistanceTravelledRightWheel/rdt;  
 
 
   for (uint i = 0; i < hw_commands_.size(); i++)
@@ -431,9 +460,9 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 
 
   //update diffbot x,y,theta
-  base_x_ += base_dx * dt;
-  base_y_ += base_dy * dt;
-  base_theta_ += base_dtheta * dt;
+  base_x_ += base_dx * ldt;
+  base_y_ += base_dy * rdt;
+  base_theta_ += base_dtheta * ldt;
 
   RCLCPP_INFO( rclcpp::get_logger("DiffBotSystemHardware"), "base_x_:%.5f, base_y_:%.5f, base_theta_:%.5f. ",base_x_,base_y_,base_theta_);
 
@@ -528,23 +557,6 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
   RCLCPP_INFO(
     rclcpp::get_logger("MiroRosNode"), "pub right wheel command %d for '%s'!", motor_right_rpm_.data,
     info_.joints[1].name.c_str());
-
-
-  //to hardware
-  //hw_cmd_motor_left_rpm_pub_->publishData();  //publish to topic
-  //hw_cmd_motor_right_rpm_pub_->publishData();  //publish to topic
-
-
-  //int32_t test_rpm_ = 360 ; 
- 
-  
-  //set_motor_right_rpm(int32_t rw_rpm_);
-
-  //pub_left_motor_value_
-  //auto motor_left_rpm = std_msgs::msg::Int32();
-  //motor_left_rpm.data = 5000;
-  //motor_left_rpm_pub->publish(motor_left_rpm);
-
 
   return hardware_interface::return_type::OK;
 }

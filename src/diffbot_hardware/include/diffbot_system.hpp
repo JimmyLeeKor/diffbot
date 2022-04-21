@@ -71,8 +71,6 @@ class HardwareEncoder
   private:
     std_msgs::msg::Int32 enc_left_raw;
 
-
-
 };
 
 
@@ -138,13 +136,28 @@ private:
   int32_t DiffEncoderPulseLeft, DiffEncoderPulseRight;  
   double DistanceTravelledLeftWheel, DistanceTravelledRightWheel;
 
+  rclcpp::Time CurrentEncoderPulseLeftTimestamp;
+  rclcpp::Time LastEncoderPulseLeftTimestamp;  
+
+  rclcpp::Time CurrentEncoderPulseRightTimestamp;
+  rclcpp::Time LastEncoderPulseRightTimestamp;  
+
+  rclcpp::Time DiffEncoderPulseLeftTimestamp;
+  rclcpp::Time DiffEncoderPulseRightTimestamp;    
+
+
+
+
 
 
   std_msgs::msg::Int32 motor_left_rpm_ ;
   std_msgs::msg::Int32 motor_right_rpm_ ;
 
-  std_msgs::msg::Int32 encoder_left_ ;
-  std_msgs::msg::Int32 encoder_right_ ;  
+  //std_msgs::msg::Int32 encoder_left_ ;
+  //std_msgs::msg::Int32 encoder_right_ ;  
+
+
+
 
 };
 
