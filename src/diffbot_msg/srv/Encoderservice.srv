@@ -1,6 +1,7 @@
 bool state
 ---
-builtin_interfaces/Time to_encoder_left_stamp
+#builtin_interfaces/Time to_encoder_left_stamp
 int32 to_encoder_left
-builtin_interfaces/Time to_encoder_right_stamp
+#builtin_interfaces/Time to_encoder_right_stamp
 int32 to_encoder_right
+int32 to_encoder_accumulate_count

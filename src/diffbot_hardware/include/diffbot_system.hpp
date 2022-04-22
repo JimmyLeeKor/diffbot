@@ -59,6 +59,7 @@ class HardwareCommandPub : public rclcpp::Node  //the node definition for the pu
 // define subscriber class
 
 //class HardwareCommandSub : public rclcpp::Node  //the node definition for the publisher to talk to micro-ROS agent
+/*
 class HardwareEncoder
 {
   public:
@@ -72,7 +73,7 @@ class HardwareEncoder
     std_msgs::msg::Int32 enc_left_raw;
 
 };
-
+*/
 
 
 
@@ -113,7 +114,7 @@ public:
   //std::shared_ptr<HardwareCommandSub> hw_state_encoder_left_sub_;    //make the subscription node a member
   //void setencoderleft(std_msgs::msg::Int32);
 
-  std::shared_ptr<HardwareEncoder> hw_encoder_left_;    //make the encoder parameter get
+  //std::shared_ptr<HardwareEncoder> hw_encoder_left_;    //make the encoder parameter get
 
 
 
@@ -131,20 +132,27 @@ private:
   double base_x_, base_y_, base_theta_;
 
   //odometry calulate variable
-  int32_t CurrentEncoderPulseLeft, CurrentEncoderPulseRight;
-  int32_t LastEncoderPulseLeft, LastEncoderPulseRight;  
+  //int32_t CurrentEncoderPulseLeft, CurrentEncoderPulseRight;
+  //int32_t LastEncoderPulseLeft, LastEncoderPulseRight;  
   int32_t DiffEncoderPulseLeft, DiffEncoderPulseRight;  
-  double DistanceTravelledLeftWheel, DistanceTravelledRightWheel;
+  int32_t AccumulateCounter;
 
-  rclcpp::Time CurrentEncoderPulseLeftTimestamp;
-  rclcpp::Time LastEncoderPulseLeftTimestamp;  
+  double delta_angle_left, delta_angle_right;
+  double angular_position_left, angular_position_right;
+  double angular_velocity_left, angular_velocity_right;
+  
+  //int32_t DistanceTravelledLeftWheel, DistanceTravelledRightWheel;
+  
 
-  rclcpp::Time CurrentEncoderPulseRightTimestamp;
-  rclcpp::Time LastEncoderPulseRightTimestamp;  
 
-  rclcpp::Time DiffEncoderPulseLeftTimestamp;
-  rclcpp::Time DiffEncoderPulseRightTimestamp;    
+  //rclcpp::Time CurrentEncoderPulseLeftTimestamp;
+  //rclcpp::Time LastEncoderPulseLeftTimestamp;  
 
+  //rclcpp::Time CurrentEncoderPulseRightTimestamp;
+  //rclcpp::Time LastEncoderPulseRightTimestamp;  
+
+  //rclcpp::Time DiffEncoderPulseLeftTimestamp;
+  //rclcpp::Time DiffEncoderPulseRightTimestamp;    
 
 
 
@@ -156,7 +164,11 @@ private:
   //std_msgs::msg::Int32 encoder_left_ ;
   //std_msgs::msg::Int32 encoder_right_ ;  
 
-
+  protected:
+    /** \brief DiffBot reports travel distance in metres, need radians for ros_control RobotHW */
+    double linearToAngular(const double &distance) const;
+    /** \brief RobotHW provides velocity command in rad/s, DiffBot needs m/s. */
+    double angularToLinear(const double &angle) const;
 
 
 };

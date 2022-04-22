@@ -3,6 +3,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/int32.hpp"
+//#include "std_msgs/msg/float64.hpp"
 
 #include "diffbot_msg/srv/encoderservice.hpp"
 #include "std_srvs/srv/empty.hpp"
@@ -27,18 +28,18 @@ class encoder : public rclcpp::Node
     private:
       void get_encoder_left(const std_msgs::msg::Int32 & msg)
       {
-        //RCLCPP_INFO(this->get_logger(), "encoder_left: '%d'", msg.data);
-        encoder_left_stamp_buffer = rclcpp::Clock().now();
-        std_msgs::msg::Int32 temp = msg;
-        encoder_left_buffer = (int32_t) temp.data;
+
+        encoder_left_buffer = encoder_left_buffer + msg.data;
+        encoder_accum_counter++;
+
+        //RCLCPP_INFO(this->get_logger(), "msg.data: '%.5f'   leftw travell acc: '%.5f'  accumm cnt '%.1f'", msg.data, encoder_left_buffer, encoder_accum_counter);        
       }
 
       void get_encoder_right(const std_msgs::msg::Int32 & msg)
       {
-        //RCLCPP_INFO(this->get_logger(), "encoder_right: '%d'", msg.data);
-        encoder_right_stamp_buffer = rclcpp::Clock().now();
-        std_msgs::msg::Int32 temp = msg;
-        encoder_right_buffer = (int32_t) temp.data;
+        encoder_right_buffer =  encoder_right_buffer + msg.data;
+
+        //RCLCPP_INFO(this->get_logger(), "right wheel travelled distance accumm: '%.5f'", encoder_right_buffer);        
       }
 
     public:
@@ -48,9 +49,15 @@ class encoder : public rclcpp::Node
             if(request->state)
             {
                 response->to_encoder_left = encoder_left_buffer;
-                response->to_encoder_left_stamp = encoder_left_stamp_buffer;
+                encoder_left_buffer = 0;
+
+                //response->to_encoder_left_stamp = encoder_left_stamp_buffer;
                 response->to_encoder_right = encoder_right_buffer;
-                response->to_encoder_right_stamp = encoder_right_stamp_buffer;
+                encoder_right_buffer = 0;
+
+                response->to_encoder_accumulate_count = encoder_accum_counter;
+                encoder_accum_counter = 0 ;
+                //response->to_encoder_right_stamp = encoder_right_stamp_buffer;
                // RCLCPP_INFO(rclcpp::get_logger("Debug_from_buffer_node"), "left time stamp: %5ld. val: %d,right time stamp: %5ld, val: %d ", 
                //   encoder_left_stamp_buffer, encoder_left_buffer, encoder_right_stamp_buffer, encoder_right_buffer);
                 //RCLCPP_INFO(this->get_logger(), "send service response");
@@ -59,9 +66,9 @@ class encoder : public rclcpp::Node
 
     private:
       int32_t encoder_left_buffer;
-      rclcpp::Time encoder_left_stamp_buffer;
       int32_t encoder_right_buffer;
-      rclcpp::Time encoder_right_stamp_buffer;
+      int32_t encoder_accum_counter;      
+
 
       rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_left_subs;
       rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_right_subs;
