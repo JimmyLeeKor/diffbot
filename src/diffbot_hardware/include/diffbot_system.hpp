@@ -140,8 +140,8 @@ private:
   double delta_angle_left, delta_angle_right;
   double angular_position_left, angular_position_right;
   double angular_velocity_left, angular_velocity_right;
-  
-  //int32_t DistanceTravelledLeftWheel, DistanceTravelledRightWheel;
+
+  double travelled_distance_left, travelled_distance_right, travelled_distance;
   
 
 

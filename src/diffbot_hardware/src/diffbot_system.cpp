@@ -147,18 +147,12 @@ void encoder_left_callback(const std_msgs::msg::Int32 encoder_left)
 
 CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::HardwareInfo & info)
 {
-  base_x_ = 0.0;
-  base_y_ = 0.0;
-  base_theta_ = 0.0;
-
 
 
 
 
   hw_cmd_motor_left_rpm_pub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
   hw_cmd_motor_right_rpm_pub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
-
-
 
 
 
@@ -174,6 +168,47 @@ CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::Hardware
   hw_positions_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_velocities_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_commands_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
+
+
+
+
+
+  base_x_ = 0.0;
+  base_y_ = 0.0;
+  base_theta_ = 0.0;
+
+  hw_positions_[0] = 0.0;
+  hw_positions_[1] = 0.0;
+
+  hw_commands_[0] = 0.0;
+  hw_commands_[1] = 0.0;  
+
+  hw_velocities_[0] = 0.0;
+  hw_velocities_[1] = 0.0;
+  
+  DiffEncoderPulseLeft = 0;
+  DiffEncoderPulseRight = 0;
+  AccumulateCounter = 0;
+
+  delta_angle_left = 0;
+  delta_angle_right = 0;  
+
+  angular_position_left=0;
+  angular_position_right=0;
+  angular_velocity_left=0;
+  angular_velocity_right=0;
+
+  travelled_distance_left=0;
+  travelled_distance_right=0;
+  travelled_distance = 0;
+ 
+  motor_left_rpm_.data = 0;
+  motor_left_rpm_.data = 0;
+
+
+
+
+  
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints)
   {
@@ -342,6 +377,10 @@ CallbackReturn DiffBotSystemHardware::on_deactivate(
 #define VELOCITY_CONVERT_CONSTANT 3.8197
 #define CAL_DURATION 0.05
 
+//constant for convert rad/sec to rpm
+//#define RAD_TO_RPM 9.549297
+#define RAD_TO_PPS 17916.39103
+
 
 
 
@@ -370,50 +409,77 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 
 
   //convert diff encoder to angle in radian
-  delta_angle_left = (double)DiffEncoderPulseLeft * (2.0*M_PI / ENCODER_RESOLUTION);
-  delta_angle_right = (double)DiffEncoderPulseRight * (2.0*M_PI / ENCODER_RESOLUTION);
+  //rad/sec
+  //delta_angle_left = (double)DiffEncoderPulseLeft * (2.0*M_PI / ENCODER_RESOLUTION);
+  //delta_angle_right = (double)DiffEncoderPulseRight * (2.0*M_PI / ENCODER_RESOLUTION);
 
-  angular_position_left = delta_angle_left;
-  angular_position_right = delta_angle_right;
+  //angular_position_left = delta_angle_left;
+  //angular_position_right = delta_angle_right;
 
-  angular_velocity_left = delta_angle_left/(CAL_DURATION * AccumulateCounter);
-  angular_velocity_right = delta_angle_right/(CAL_DURATION * AccumulateCounter)  ;
-  
+  //angular_velocity_left = delta_angle_left/(CAL_DURATION * AccumulateCounter);
+  //angular_velocity_right = delta_angle_right/(CAL_DURATION * AccumulateCounter)  ;
 
+  if( AccumulateCounter != 0 )
+  {
+    angular_position_left =  (double)((double)DiffEncoderPulseLeft/ENCODER_RESOLUTION) * 2.0 * M_PI  ; //in radian
+    angular_position_right =  (double)((double)DiffEncoderPulseRight/ENCODER_RESOLUTION) * 2.0 * M_PI  ;  // in radian
 
-  //update joint state - pos
-  hw_positions_[0] = hw_positions_[0] + angular_position_left;
-  hw_positions_[1] = hw_positions_[1] + angular_position_right;
+    angular_velocity_left = ((double)angular_position_left)/( CAL_DURATION* AccumulateCounter);   // rad/s
+    angular_velocity_right = ((double)angular_position_right)/( CAL_DURATION* AccumulateCounter);  // rad/s
+  }
+
+  RCLCPP_INFO( rclcpp::get_logger("diffbot_encoder_test"), "angular_position_left: %.5f, angular_position_right: %.5f .",angular_position_left, angular_position_right);
+  RCLCPP_INFO( rclcpp::get_logger("diffbot_encoder_test"), "angular_velocity_left: %.5f, angular_velocity_right: %.5f .",angular_velocity_left, angular_velocity_right);
 
 
   //update joint state - vel
   hw_velocities_[0] = angular_velocity_left;
   hw_velocities_[1] = angular_velocity_right;
 
+  //update joint state - wheel angular pos in radian
+  hw_positions_[0] = hw_positions_[0] + angular_position_left;
+  hw_positions_[1] = hw_positions_[1] + angular_position_right;
+
+  travelled_distance_left = angular_position_left*radius;
+  travelled_distance_right = angular_position_right*radius;
+  travelled_distance = 0.5*(travelled_distance_left+travelled_distance_right);
+
+  RCLCPP_INFO( rclcpp::get_logger("DiffBotSystemHardware"), "travelled_distance_left:%.5f, travelled_distance_right:%.5f. ",travelled_distance_left,travelled_distance_right);
+
+
+
+
+  // mdist = l + r * 0.5
+  // dx = mdist* const thesta
+  // dy = mdist * sind tehta
+  // dth = (dr - dl) * dist_w
+
 
   //double base_dx = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * cos(base_theta_);
   //double base_dx = 0.5 * radius * (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * cos(base_theta_);
-  //double base_dx = (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * cos(base_theta_);
+  double base_dx = travelled_distance * cos(base_theta_);
 
   //double base_dy = 0.5 * radius * (hw_commands_[0] + hw_commands_[1]) * sin(base_theta_);  
   //double base_dy = 0.5 * radius * (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * sin(base_theta_);
-  //double base_dy = (DistanceTravelledLeftWheel + DistanceTravelledRightWheel) * sin(base_theta_);  
+  double base_dy = travelled_distance * sin(base_theta_);
 
   //double base_dtheta = radius * (hw_commands_[0] - hw_commands_[1]) / dist_w;
-  //double base_dtheta = radius * (DistanceTravelledLeftWheel - DistanceTravelledRightWheel) / dist_w;
+  double base_dtheta = (travelled_distance_right - travelled_distance_left) / dist_w;
+
+
 
   //normalize angle
-  //base_dtheta = fmod(base_dtheta, 2.0*M_PI);
-  //if (base_dtheta < 0) base_dtheta += 2.0*M_PI;
+  base_dtheta = fmod(base_dtheta, 2.0*M_PI);
+  if (base_dtheta < 0) base_dtheta += 2.0*M_PI;
 
   //update diffbot x,y,theta
-  //base_x_ += base_dx;
-  //base_y_ += base_dy;
-  //base_theta_ += base_dtheta;
+  base_x_ += base_dx;
+  base_y_ += base_dy;
+  base_theta_ += base_dtheta;
 
   //normalize angle
-  //base_theta_ = fmod(base_theta_, 2.0*M_PI);
-  //if (base_theta_ < 0) base_theta_ += 2.0*M_PI;
+  base_theta_ = fmod(base_theta_, 2.0*M_PI);
+  if (base_theta_ < 0) base_theta_ += 2.0*M_PI;
 
 
   for (uint i = 0; i < hw_commands_.size(); i++)
@@ -426,6 +492,7 @@ hardware_interface::return_type DiffBotSystemHardware::read()
     // END: This part here is for exemplary purposes - Please do not copy to your production code
   }
 
+  RCLCPP_INFO( rclcpp::get_logger("DiffBotSystemHardware"), "base_dx:%.5f, base_dy:%.5f, base_dtheta:%.5f. ",base_dx,base_dy,base_dtheta);
   RCLCPP_INFO( rclcpp::get_logger("DiffBotSystemHardware"), "base_x_:%.5f, base_y_:%.5f, base_theta_:%.5f. ",base_x_,base_y_,base_theta_);
 
 
@@ -502,7 +569,7 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
   // sending commands to the hardware
   //publish to topic
   //motor_left_rpm_.data = (int32_t)(hw_commands_[0] * VELOCITY_CONVERT_CONSTANT);
-  motor_left_rpm_.data = (int32_t)(hw_commands_[0]*10000);
+  motor_left_rpm_.data = (int32_t)(hw_commands_[0]*RAD_TO_PPS);
   hw_cmd_motor_left_rpm_pub_->MotorLeftRpmPublish(motor_left_rpm_);  
 
   RCLCPP_INFO(
@@ -512,7 +579,7 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
 
   //publish to topic
   //motor_right_rpm_.data = (int32_t)(hw_commands_[1] * VELOCITY_CONVERT_CONSTANT);
-  motor_right_rpm_.data = (int32_t)(hw_commands_[1]*10000);
+  motor_right_rpm_.data = (int32_t)(hw_commands_[1]*RAD_TO_PPS);
   hw_cmd_motor_right_rpm_pub_->MotorRightRpmPublish(motor_right_rpm_);  
 
   RCLCPP_INFO(
@@ -550,3 +617,4 @@ hardware_interface::return_type diffbot_hardware::DiffBotSystemHardware::write()
 #include "pluginlib/class_list_macros.hpp"
 PLUGINLIB_EXPORT_CLASS(
   diffbot_hardware::DiffBotSystemHardware, hardware_interface::SystemInterface)
+
