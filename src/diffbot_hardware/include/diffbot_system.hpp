@@ -30,7 +30,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/int32.hpp"
-
+#include "std_msgs/msg/int32_multi_array.hpp"
 
 
 
@@ -38,52 +38,38 @@ using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface
 
 namespace diffbot_hardware
 {
- 
-
 
 // define cmd publisher class
-class HardwareCommandPub : public rclcpp::Node  //the node definition for the publisher to talk to micro-ROS agent
+ //the node definition for the publisher to talk to micro-ROS agent
+
+class DiffbotHWMotorLeftCmdPub : public rclcpp::Node 
 {
   public:
-    HardwareCommandPub();
+    DiffbotHWMotorLeftCmdPub();
 
-    void MotorLeftRpmPublish(std_msgs::msg::Int32 motor_left_rpm);
-    void MotorRightRpmPublish(std_msgs::msg::Int32 motor_right_rpm);
+    void MotorCmdLeftPublish(std_msgs::msg::Int32 motor_left_pps);
 
   private:
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_left_rpm_publisher_;
+};
+
+class DiffbotHWMotorRightCmdPub : public rclcpp::Node 
+{
+  public:
+    DiffbotHWMotorRightCmdPub();
+
+    void MotorCmdRightPublish(std_msgs::msg::Int32 motor_right_pps);
+
+  private:
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr motor_right_rpm_publisher_;
 };
 
 
-// define subscriber class
-
-//class HardwareCommandSub : public rclcpp::Node  //the node definition for the publisher to talk to micro-ROS agent
-/*
-class HardwareEncoder
-{
-  public:
-    HardwareEncoder();
-    
-    void SetEncoderLeft(std_msgs::msg::Int32 encoder_left);
-    std_msgs::msg::Int32 GetEncoderLeft(void);
-
-
-  private:
-    std_msgs::msg::Int32 enc_left_raw;
-
-};
-*/
-
-
 
 class DiffBotSystemHardware
-    : public hardware_interface::SystemInterface
+  : public hardware_interface::SystemInterface
 {
 public:
-  //explicit DiffBotSystemHardware() {}
-  //virtual ~DiffBotSystemHardware();
-
 
   RCLCPP_SHARED_PTR_DEFINITIONS(DiffBotSystemHardware);
 
@@ -108,14 +94,12 @@ public:
   DIFFBOT_HARDWARE_PUBLIC
   hardware_interface::return_type write() override;
 
-  std::shared_ptr<HardwareCommandPub> hw_cmd_motor_left_rpm_pub_;    //make the publisher node a member
-  std::shared_ptr<HardwareCommandPub> hw_cmd_motor_right_rpm_pub_;    //make the publisher node a member
 
-  //std::shared_ptr<HardwareCommandSub> hw_state_encoder_left_sub_;    //make the subscription node a member
-  //void setencoderleft(std_msgs::msg::Int32);
+  //std::shared_ptr<HardwareCommandPub> hw_cmd_motor_left_pps_pub_;    //make the publisher node a member
+  //std::shared_ptr<HardwareCommandPub> hw_cmd_motor_right_rpm_pub_;    //make the publisher node a member
 
-  //std::shared_ptr<HardwareEncoder> hw_encoder_left_;    //make the encoder parameter get
-
+  std::shared_ptr<DiffbotHWMotorLeftCmdPub> diffbot_hw_motor_left_cmd_pub_;    //make the publisher node a member
+  std::shared_ptr<DiffbotHWMotorRightCmdPub> diffbot_hw_motor_right_cmd_pub_;    //make the publisher node a member  
 
 
 private:
@@ -123,7 +107,7 @@ private:
   double hw_start_sec_;
   double hw_stop_sec_;
 
-  // Store the command for the simulated robot
+  // Store the command for the diffbot
   std::vector<double> hw_commands_;
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
@@ -132,48 +116,24 @@ private:
   double base_x_, base_y_, base_theta_;
 
   //odometry calulate variable
-  //int32_t CurrentEncoderPulseLeft, CurrentEncoderPulseRight;
-  //int32_t LastEncoderPulseLeft, LastEncoderPulseRight;  
-  int32_t DiffEncoderPulseLeft, DiffEncoderPulseRight;  
-  int32_t AccumulateCounter;
+  //int32_t DiffEncoderPulseLeft, DiffEncoderPulseRight;
+  int32_t diff_encoder_pulse_left_, diff_encoder_pulse_right_;
+  int32_t sampling_duration_;
 
-  double delta_angle_left, delta_angle_right;
-  double angular_position_left, angular_position_right;
-  double angular_velocity_left, angular_velocity_right;
+  double delta_angle_left_, delta_angle_right_;
+  double angular_position_left_, angular_position_right_;
+  double angular_velocity_left_, angular_velocity_right_;
 
-  double travelled_distance_left, travelled_distance_right, travelled_distance;
+  double travelled_distance_left_, travelled_distance_right_, travelled_distance_;
   
+  std_msgs::msg::Int32 diffbot_hw_motor_left_pps_ ;
+  std_msgs::msg::Int32 diffbot_hw_motor_right_pps_ ;
 
-
-  //rclcpp::Time CurrentEncoderPulseLeftTimestamp;
-  //rclcpp::Time LastEncoderPulseLeftTimestamp;  
-
-  //rclcpp::Time CurrentEncoderPulseRightTimestamp;
-  //rclcpp::Time LastEncoderPulseRightTimestamp;  
-
-  //rclcpp::Time DiffEncoderPulseLeftTimestamp;
-  //rclcpp::Time DiffEncoderPulseRightTimestamp;    
-
-
-
-
-
-  std_msgs::msg::Int32 motor_left_rpm_ ;
-  std_msgs::msg::Int32 motor_right_rpm_ ;
-
-  //std_msgs::msg::Int32 encoder_left_ ;
-  //std_msgs::msg::Int32 encoder_right_ ;  
-
-  protected:
-    /** \brief DiffBot reports travel distance in metres, need radians for ros_control RobotHW */
-    double linearToAngular(const double &distance) const;
-    /** \brief RobotHW provides velocity command in rad/s, DiffBot needs m/s. */
-    double angularToLinear(const double &angle) const;
-
-
+  //protected:
+    //double linearToAngular(const double &distance) const;
+    //double angularToLinear(const double &angle) const;
 };
 
 }  // namespace diffbot_hardware
 
 #endif  // DIFFBOT_HARDWARE__DIFFBOT_SYSTEM_HPP_
-  //get encoder current value

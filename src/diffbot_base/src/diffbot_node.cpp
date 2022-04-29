@@ -3,7 +3,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/int32.hpp"
-//#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int32_multi_array.hpp"
+
 
 #include "diffbot_msg/srv/encoderservice.hpp"
 #include "std_srvs/srv/empty.hpp"
@@ -17,69 +18,61 @@ using std::placeholders::_2;
 class encoder : public rclcpp::Node
 {
   public:
-    encoder(): Node("lgv_hardware_read_buffer_node")
+    encoder(): Node("diffbot_base_encoder")
     {
-        encoder_left_subs = this->create_subscription<std_msgs::msg::Int32>("encoder_left", 1, std::bind(&encoder::get_encoder_left, this, _1));
-        encoder_right_subs = this->create_subscription<std_msgs::msg::Int32>("encoder_right", 1, std::bind(&encoder::get_encoder_right, this, _1));
-        send_interface = this->create_service<diffbot_msg::srv::Encoderservice>("encoder_val", std::bind(&encoder::send_to_interface, 
+        //encoder subscription from diffbot_hw_board via MicroXRCE agent, via serial communication
+        encoder_subs = this->create_subscription<std_msgs::msg::Int32MultiArray>("diffbot_hw_encoder", 1, std::bind(&encoder::get_encoder_accumulated_value, this, _1));
+
+        //send encoder value to ros2_control_hardware_interface using ros2 service node
+        send_interface = this->create_service<diffbot_msg::srv::Encoderservice>("diffbot_base_encoder", std::bind(&encoder::send_to_encoder_service_interface,         
         this,_1,_2));
     }
 
-    private:
-      void get_encoder_left(const std_msgs::msg::Int32 & msg)
-      {
 
-        encoder_left_buffer = encoder_left_buffer + msg.data;
-        encoder_accum_counter++;
-
-        //RCLCPP_INFO(this->get_logger(), "msg.data: '%.5f'   leftw travell acc: '%.5f'  accumm cnt '%.1f'", msg.data, encoder_left_buffer, encoder_accum_counter);        
-      }
-
-      void get_encoder_right(const std_msgs::msg::Int32 & msg)
-      {
-        encoder_right_buffer =  encoder_right_buffer + msg.data;
-
-        //RCLCPP_INFO(this->get_logger(), "right wheel travelled distance accumm: '%.5f'", encoder_right_buffer);        
-      }
-
-    public:
-      void send_to_interface(const std::shared_ptr<diffbot_msg::srv::Encoderservice::Request>  request
+    void send_to_encoder_service_interface(const std::shared_ptr<diffbot_msg::srv::Encoderservice::Request>  request
        ,std::shared_ptr<diffbot_msg::srv::Encoderservice::Response>  response)
+    {
+      if(request->state)
       {
-            if(request->state)
-            {
-                response->to_encoder_left = encoder_left_buffer;
-                encoder_left_buffer = 0;
+        //send to ros2_control_hardware
+        response->to_encoder_left = encoder_left_accumulated;
+        response->to_encoder_right = encoder_right_accumulated;                
+        response->to_encoder_accumulate_count = sampling_duration_accumulated;                
 
-                //response->to_encoder_left_stamp = encoder_left_stamp_buffer;
-                response->to_encoder_right = encoder_right_buffer;
-                encoder_right_buffer = 0;
-
-                response->to_encoder_accumulate_count = encoder_accum_counter;
-                encoder_accum_counter = 0 ;
-                //response->to_encoder_right_stamp = encoder_right_stamp_buffer;
-               // RCLCPP_INFO(rclcpp::get_logger("Debug_from_buffer_node"), "left time stamp: %5ld. val: %d,right time stamp: %5ld, val: %d ", 
-               //   encoder_left_stamp_buffer, encoder_left_buffer, encoder_right_stamp_buffer, encoder_right_buffer);
-                //RCLCPP_INFO(this->get_logger(), "send service response");
-            }
+        //clear acummulated value
+        encoder_left_accumulated = 0;
+        encoder_right_accumulated = 0;
+        sampling_duration_accumulated = 0 ;
       }
+    }
 
-    private:
-      int32_t encoder_left_buffer;
-      int32_t encoder_right_buffer;
-      int32_t encoder_accum_counter;      
+  private:
+    int32_t encoder_left_accumulated;
+    int32_t encoder_right_accumulated;
+    int32_t sampling_duration_accumulated;
+
+    rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr encoder_subs;      
+    rclcpp::Service<diffbot_msg::srv::Encoderservice>::SharedPtr send_interface;
 
 
-      rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_left_subs;
-      rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr encoder_right_subs;
-      rclcpp::Service<diffbot_msg::srv::Encoderservice>::SharedPtr send_interface;
+    void get_encoder_accumulated_value(const std_msgs::msg::Int32MultiArray & diffbot_hw_encoder)
+    {
+      //The value and sampling_duration_accumulated are accumulated until updated.
+      encoder_left_accumulated = encoder_left_accumulated + diffbot_hw_encoder.data[0];
+      encoder_right_accumulated = encoder_right_accumulated + diffbot_hw_encoder.data[1];
+      sampling_duration_accumulated = sampling_duration_accumulated + diffbot_hw_encoder.data[2];
+
+      //RCLCPP_INFO(this->get_logger(), "msg.data: '%.5f'   leftw travell acc: '%.5f'  accumm cnt '%.1f'", msg.data, encoder_left_buffer, sampling_duration);        
+    }
 };
+
+
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  auto test_node = std::make_shared<encoder>();
-  rclcpp::spin(test_node);
+  auto diffbot_base = std::make_shared<encoder>();
+  rclcpp::spin(diffbot_base);
   rclcpp::shutdown();
   return 0;
 }

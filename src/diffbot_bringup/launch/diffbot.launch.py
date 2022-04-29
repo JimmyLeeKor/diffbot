@@ -14,8 +14,12 @@
 
 
 
+
+
 # launch xrce dds
 # cd /usr/local/bin && MicroXRCEAgent serial --dev /dev/ttyUSB0
+# run diffbot_teleop diffbot_teleop
+
 
 
 
@@ -39,6 +43,7 @@ def generate_launch_description():
             ),
         ]
     )
+
     robot_description = {"robot_description": robot_description_content}
 
     robot_controllers = PathJoinSubstitution(
@@ -48,6 +53,7 @@ def generate_launch_description():
             "diffbot_controllers.yaml",
         ]
     )
+
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("diffbot_description"), "config", "diffbot.rviz"]
     )
@@ -65,8 +71,8 @@ def generate_launch_description():
     diffbot_node = Node(
         package="diffbot_base",
         executable="diffbot_node",
-    )    
-    
+    )
+
     robot_state_pub_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -98,11 +104,14 @@ def generate_launch_description():
     )
 
 
+
+    #nav350 launch
     # diffbot_node = Node(
     #      package="diffbot_hardware",
     #      executable="diffbot_node",
-
     #  )
+
+
 
     # Delay rviz start after `joint_state_broadcaster`
     delay_rviz_after_joint_state_broadcaster_spawner = RegisterEventHandler(
@@ -128,6 +137,7 @@ def generate_launch_description():
         delay_robot_controller_spawner_after_joint_state_broadcaster_spawner,
         diffbot_node,
     ]
+
 
     return LaunchDescription(nodes)
     
