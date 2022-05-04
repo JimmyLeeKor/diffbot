@@ -46,7 +46,8 @@ diffbot_teleop::diffbot_teleop(std::shared_ptr<rclcpp::Node> nh):
 //   nh_.param("scale_angular", a_scale_, a_scale_);
 //   nh_.param("scale_linear", l_scale_, l_scale_);
 
-  twist_pub_ = nh_->create_publisher<geometry_msgs::msg::Twist>("/diffbot_base_controller/cmd_vel_unstamped",1);
+  //twist_pub_ = nh_->create_publisher<geometry_msgs::msg::Twist>("/diffbot_base_controller/cmd_vel_unstamped",1);
+  twist_pub_ = nh_->create_publisher<geometry_msgs::msg::Twist>("cmd_vel",1);
 }
 
 int kfd = 0;

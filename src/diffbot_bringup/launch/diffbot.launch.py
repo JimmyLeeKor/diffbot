@@ -101,6 +101,11 @@ def generate_launch_description():
         package="controller_manager",
         executable="spawner",
         arguments=["diffbot_base_controller", "-c", "/controller_manager"],
+        
+        #remapping topic "cmd_vel"
+        remappings=[
+            ("/diff_drive_controller/cmd_vel_unstamped", "/cmd_vel"),
+        ]
     )
 
 
@@ -131,7 +136,7 @@ def generate_launch_description():
 
     nodes = [
         control_node,
-        robot_state_pub_node,
+        #robot_state_pub_node,
         joint_state_broadcaster_spawner,
         delay_rviz_after_joint_state_broadcaster_spawner,
         delay_robot_controller_spawner_after_joint_state_broadcaster_spawner,
