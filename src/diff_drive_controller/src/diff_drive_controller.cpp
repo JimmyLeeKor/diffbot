@@ -474,6 +474,11 @@ CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &
         std::shared_ptr<Twist> twist_stamped;
         received_velocity_msg_ptr_.get(twist_stamped);
         twist_stamped->twist = *msg;
+
+        //modify by hw1  20220504
+        twist_stamped->twist.angular.z = twist_stamped->twist.angular.z*-1;
+        //modify by hw1  20220504
+
         twist_stamped->header.stamp = node_->get_clock()->now();
       });
   }

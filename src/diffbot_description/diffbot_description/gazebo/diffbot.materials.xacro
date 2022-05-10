@@ -37,4 +37,19 @@ https://github.com/ros-simulation//blob/kinetic-devel/rrbot_description/urdf/mat
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
 
+  <material name="yellow_alpha">
+    <color rgba="0.8 0.8 0.0 0.8"/>
+  </material>
+
+ 
+  <material name="darkgrey">
+    <color rgba="0.3 0.3 0.3 1.0"/>
+  </material>
+
+  <material name="gunmetalgrey">
+    <color rgba="0.46 0.5 0.56 1.0"/>
+  </material>
+
+
+
 </robot>
